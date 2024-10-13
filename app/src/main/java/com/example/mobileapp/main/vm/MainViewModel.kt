@@ -1,0 +1,39 @@
+package com.example.mobileapp.main.vm
+
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import androidx.navigation.toRoute
+import com.example.data.repository.ListRepositoryImpl
+import com.example.domain.usecase.ListUseCase
+import com.example.mobileapp.main.MainScreenRoute
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import timber.log.Timber
+
+class MainViewModel(
+    private val useCase: ListUseCase,
+    private val handle: SavedStateHandle
+): ViewModel() {
+
+    private val _state = MutableStateFlow<MainState>(MainState.Loading)
+    private val exceptionHandler = CoroutineExceptionHandler { coroutineContext, throwable ->
+        viewModelScope.launch {
+            _state.emit(MainState.Error(throwable.message ?: "Ошибочка"))
+        }
+    }
+
+    val state: StateFlow<MainState>
+        get() = _state
+
+
+    init {
+        viewModelScope.launch(context = exceptionHandler) {
+            val result = useCase.execute(Unit)
+            _state.emit(MainState.Content(result))
+        }
+        Timber.e(handle.toRoute<MainScreenRoute>().toString())
+    }
+}
